@@ -1,0 +1,131 @@
+# __________________________________________________________    
+#                  文件名、搜索词管理-开始
+#搜索词列表
+key1_list = [
+             ['工伤保险'],
+#              ['公积金' , '住房公积金' , '养老保险' , '医疗保险' , '生育保险' , '生育' , '失业保险' , '工伤保险' , '养老'],
+             ['公积金' , '住房公积金'],
+             ['养老保险','养老'],
+             ['生育保险','生育'],
+             ['失业保险'],
+             ['医疗保险']
+                         ]
+# 文件名处理
+file = [
+    'cnki_gongshang_jingjian',
+#     'cnki_sentence_jingjian',
+    'cnki_gongjijin_jingjian',
+    'cnki_yanglao_jingjian',
+    'cnki_shengyu_jingjian',
+    'cnki_shiye_jingjian',
+    'cnki_yiliao_jingjian'
+             ]
+
+# file = [
+#     'cnki_gongshang',
+#     'cnki_sentence',
+#     'cnki_gongjijin',
+#     'cnki_yanglao',
+#     'cnki_shengyu',
+#     'cnki_shiye',
+#     'cnki_yiliao'
+#              ]
+
+# 结果、统计编号
+bianhao = '08230940'
+for i in range(6):
+#    语料文件路径
+    yl = "G:/测试/cnki数据/target_" + str(file[i]) + ".txt"
+#     yl = "G:/测试/ceshi.csv"
+#    结果文件路径
+    jg = "G:/测试/新分词/显示轮次/结果_" + str(file[i]) + "_" + bianhao + ".csv"
+#     jg = "G:/测试/结果_cnki_" + str(file[i]) + "_" + bianhao + "_jingjian.csv"
+#    词频统计文件路径
+    tj = "G:/测试/新分词/显示轮次/统计_" + str(file[i]) + "_" + bianhao + ".csv"
+#     tj = "G:/测试/统计_cnki_" + str(file[i]) + "_" + bianhao + "_jingjian.csv"
+#     词语关联路径文件
+#     lj = "G:/测试/新分词/路径_cnki_" + str(file[i]) + "_" + bianhao + ".csv"
+    print(yl + "      " + jg +  "      " + tj)
+    
+#                  文件名、搜索词管理-结束
+#   __________________________________________________________
+  
+    #根据文件名逐个完成词语的共现网络搜索
+    f = open( yl,"r",encoding = "utf-8")
+    zl = []
+    for juzi in f:
+        zl.append(juzi)
+    f.close()    
+    
+    
+    f1 = open( jg ,"a",encoding = "utf-8")
+    # key:本轮搜索词
+    key = []
+    # key1:初始搜索词/上轮搜索结果/下轮搜索词
+    key1 = key1_list[i]
+    key2 = []
+    n = 0
+    n1 = 0
+    while (len(key1) > 0) and (n  < 10):
+        n += 1
+        key = key1
+        key1 = [] 
+        print("第"+str(n)+"轮开始")
+        print("key： " + str(len(key)))
+        jd = 0
+        cs = len(key)
+        for k in key: 
+            
+            sys.stdout.write(str(float('%.2f' % ((jd/(len(zl)*len(key)))*100))) + "% of "+ str(len(key)) + " has been completed of this round" + "\r")
+            sys.stdout.flush()
+            
+            key2.append(k)
+            for article in zl:
+                jd += 1
+                if k in article:
+                    data = pseg.cut(str(article))
+                    df = pd.DataFrame(data,columns=['i.word','i.flag'])
+                    df = df[~df['i.word'].isin(stopwords)]
+    #               取出词列表中的动词、名词
+                    list_sen = list(df.loc[(df[df['i.flag'].isin(['x','v','n'])].index) , 'i.word'])
+#                     对于每一个与搜索词共现的词语，将其写入结果文件（搜索词+ ，+共现词），如果其不在已有搜索词列表里，将其写入待搜索词列表
+                    for w in list_sen:
+                        if not w in key2:
+                            if len(w) > 1:
+                                if not ( w == k ):
+                                    f1.write(str(k) + "," + str(w) +  "," + str(n) + "\n")
+                                    n1 += 1
+                                    #将新出现的词增加到key1
+                                    key1.append(w) 
+#             print(str(jd) + '/' + str(len(key))+ '->'+"\r")
+                
+    #         指针归位至语料文件的文件头
+#             f.seek(0)
+#             sys.stdout.write(str((int(jd/(cs*89176))) * 100) + "\r")
+#             sys.stdout.write(str(int((i/60)*100))+'%  ||'+j+'->'+"\r")
+            
+        print
+        key1 = list(set(key1))
+        print("第"+str(n)+"轮结束")
+        print(str(n1))
+        
+        print("下一轮key： " + str(len(key1)))
+
+        print("key2： " + str(len(key2)))
+
+    f1.close()  
+
+    f2 = open(jg , 'r' , encoding = 'utf-8')
+    ab = []
+    for i in f2:
+        i = i.replace('\n','')
+        ab.append(i)
+    cp = Counter(ab)  
+    f2.close()
+    
+    # print(str(tj))
+    f3 = open(tj, 'a' ,encoding = "gbk")
+    f3.write("Source" + "," + "Target" + "," +  "round" +  "," +  "Weight" + "," +  "Type" +"\n")
+    for k, v in cp.items():
+        f3.write(str(k) + "," + str(v) + "," +  "undirected" +"\n")
+    f3.close()
